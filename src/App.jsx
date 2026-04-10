@@ -8,18 +8,15 @@ import {
 // --- DATA DUMMY FRAME TEMPLATE ---
 const FRAME_TEMPLATES = [
   { id: 1, name: 'Classic White', src: '/ft-2.png' },
-  { id: 2, name: 'Dark Elegant', border: 'border-[#222]', bg: 'bg-[#222]' },
-  { id: 3, name: 'Retro Film', border: 'border-amber-700', bg: 'bg-amber-700' },
-  { id: 4, name: 'Neon Cyber', border: 'border-fuchsia-500', bg: 'bg-fuchsia-500' },
-  { id: 5, name: 'Wedding Gold', border: 'border-yellow-500', bg: 'bg-yellow-500' },
+  { id: 2, name: 'yang ireng', src: '/f2.png' },
 ];
 
 // --- KOMPONEN STEP 2: FRAME SELECTION ---
-function FrameSelectionView({ onBack, onNext, photos }) {
+function FrameSelectionView({ onBack, onNext }) {
   const [activeFrame, setActiveFrame] = useState(FRAME_TEMPLATES[0]);
 
   // Kita ambil foto pertama dari array photos untuk preview
-  const previewPhoto = photos && photos[0] ? photos[0] : null;
+  // const previewPhoto = photos && photos[0] ? photos[0] : null;
 
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
@@ -34,49 +31,56 @@ function FrameSelectionView({ onBack, onNext, photos }) {
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         
-        {/* KIRI: Daftar Frame PNG */}
-        <div className="w-full lg:w-1/3 h-[25vh] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 bg-[#111] overflow-y-hidden lg:overflow-y-auto overflow-x-auto lg:overflow-x-hidden p-4 flex flex-row lg:flex-col gap-4 shrink-0">
-          {FRAME_TEMPLATES.map((frame) => (
-            <button 
-              key={frame.id}
-              onClick={() => setActiveFrame(frame)}
-              className={`relative flex-shrink-0 w-28 lg:w-full aspect-[3/4] lg:aspect-auto lg:h-40 rounded-xl overflow-hidden transition-all bg-[#1A1A1A] flex flex-col items-center justify-center border-2 ${
-                activeFrame.id === frame.id 
-                ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.3)]' 
-                : 'border-white/10 hover:border-white/30'
-              }`}
-            >
-              {/* Gambar Frame Pilihan di Kiri */}
-              <img src={frame.src} alt={frame.name} className="h-full w-full object-contain p-2" />
-              
-              <div className={`absolute bottom-0 left-0 w-full bg-black/80 py-1`}>
-                <span className="text-[10px] lg:text-xs font-bold text-center block">{frame.name}</span>
-              </div>
-            </button>
-          ))}
+        {/* KIRI: Daftar Frame PNG (Grid Layout) */}
+        <div className="w-full lg:w-1/3 h-[30vh] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 bg-[#111] overflow-y-auto p-4 lg:p-6 shrink-0 custom-scrollbar">
+          
+          {/* Judul Area Kiri (Mirip seperti di mockup) */}
+          <h3 className="text-white/50 text-[10px] lg:text-xs font-bold uppercase tracking-wider mb-4 text-center lg:text-left">
+            Pilih Template Frame
+          </h3>
+
+          {/* Grid System: 3 kolom di HP, 2 kolom di PC */}
+          <div className="grid grid-cols-3 lg:grid-cols-2 gap-3 lg:gap-5">
+            {FRAME_TEMPLATES.map((frame) => (
+              <button 
+                key={frame.id}
+                onClick={() => setActiveFrame(frame)}
+                // Kontainer dibikin transparan, p-1 untuk ngasih jarak tipis dari garis pinggir
+                className={`relative rounded-xl transition-all duration-300 flex flex-col items-center justify-center p-1.5 ${
+                  activeFrame.id === frame.id 
+                  ? 'ring-2 ring-green-500 bg-white/5 scale-[0.97]' // Efek kalau dipilih
+                  : 'hover:scale-105 hover:bg-white/5 opacity-70 hover:opacity-100' // Efek hover
+                }`}
+              >
+                {/* Gambar PNG langsung muncul, menyesuaikan ukuran container */}
+                <img 
+                  src={frame.src} 
+                  alt={frame.name} 
+                  className="w-full h-auto object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" 
+                />
+              </button>
+            ))}
+          </div>
+
         </div>
 
-        {/* KANAN: Preview Asli Foto + Frame */}
+        {/* KANAN: Preview Frame PNG (Tanpa Wajah) */}
         <div className="w-full lg:w-2/3 flex-1 lg:h-full bg-black flex flex-col items-center justify-center p-6 relative">
           
-          {/* PEMBUNGKUS UTAMA PREVIEW (Stacking dengan Absolute) */}
-          <div className="relative w-full max-w-[280px] lg:max-w-sm aspect-[3/4] bg-[#1A1A1A] rounded-xl shadow-2xl overflow-hidden">
+          {/* PEMBUNGKUS UTAMA PREVIEW */}
+          <div className="relative w-full max-w-[280px] lg:max-w-sm aspect-[3/4] bg-[#1A1A1A] rounded-xl shadow-2xl overflow-hidden flex items-center justify-center border border-white/10">
              
-             {/* LAYER 1: FOTO WEBCAM (Posisi Paling Bawah) */}
-             {previewPhoto ? (
-               <img src={previewPhoto} className="absolute inset-0 w-full h-full object-cover z-0" alt="Preview Mentah" />
-             ) : (
-               <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 z-0">
-                 <ImageIcon size={48} className="mb-4" />
-                 <p className="text-xs">Foto belum diambil</p>
-               </div>
-             )}
+             {/* LAYER 1: BACKGROUND KOSONG (Pengganti Wajah) */}
+             <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 z-0 bg-gradient-to-br from-[#222] to-[#111]">
+               <ImageIcon size={48} className="mb-4 opacity-50" />
+               <p className="text-xs font-medium uppercase tracking-widest opacity-50">Area Foto Transparan</p>
+             </div>
 
-             {/* LAYER 2: FRAME PNG (Posisi di atas foto) */}
+             {/* LAYER 2: FRAME PNG ASLI (Posisi di atas) */}
              <img 
                src={activeFrame.src} 
-               className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none drop-shadow-lg" 
-               alt="Frame Overlay" 
+               className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" 
+               alt="Frame Overlay Asli" 
              />
           </div>
 
@@ -96,6 +100,7 @@ function FrameSelectionView({ onBack, onNext, photos }) {
           </div>
 
         </div>
+        
       </div>
     </div>
   );
@@ -179,12 +184,11 @@ export default function PhotoboothCapture() {
 if (currentStep === 2) {
     return (
       <FrameSelectionView 
-        photos={photos}
+        // photos={photos} // 
         onBack={() => setCurrentStep(1)}
         onNext={(selectedFrame) => {
           console.log("Data Frame:", selectedFrame);
           alert(`Berhasil memilih frame: ${selectedFrame.name}! Lanjut ke step Filter nanti...`);
-          // Nanti di sini kita ganti jadi setCurrentStep(3)
         }}
       />
     );
