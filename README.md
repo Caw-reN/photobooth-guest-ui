@@ -1,4 +1,4 @@
-# 📸 Jepret.in - Photobooth Guest UI 
+# 📸 foto seeni - Photobooth Guest UI 
 
 [![React](https://img.shields.io/badge/React-18.x-blue.svg?style=flat&logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-Latest-purple.svg?style=flat&logo=vite)](https://vitejs.dev/)
