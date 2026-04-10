@@ -25,9 +25,9 @@ UI ini mengadopsi gaya desain **Dark Mode & Glassmorphism**, memberikan kesan pr
 Aplikasi ini dirancang mengikuti alur linear 7 langkah. Saat ini, fokus pengembangan masih berada di Tahap 1.
 
 - [x] **1. Photo**: Konfigurasi kamera & pengambilan gambar beruntun.
-- [ ] **2. Retake**: Konfirmasi hasil foto & opsi ulang.
-- [ ] **3. Frame**: Pemilihan bingkai/overlay dekoratif.
-- [ ] **4. Filter**: Penerapan filter warna (*Grayscale*, *Sepia*, dll).
+- [x] **2. Retake**: Konfirmasi hasil foto & opsi ulang.
+- [x] **3. Frame**: Pemilihan bingkai/overlay dekoratif.
+- [x] **4. Filter**: Penerapan filter warna (*Grayscale*, *Sepia*, dll).
 - [ ] **5. Sticker**: Penambahan elemen stiker *drag-and-drop*.
 - [ ] **6. Video Frame**: Opsi konversi menjadi GIF/MP4 Boomerang.
 - [ ] **7. Timelapse**: Finalisasi, *render*, dan *generate* QR Code.
