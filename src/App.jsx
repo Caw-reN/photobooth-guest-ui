@@ -4,6 +4,16 @@ import {
   Camera, FlipHorizontal, Timer, Image as ImageIcon, 
   RefreshCw, ChevronRight, Settings2, Play, ChevronDown, ChevronUp, Video
 } from 'lucide-react';
+import { polyfill } from "mobile-drag-drop";
+import { scrollBehaviourDragImageTranslateOverride } from "mobile-drag-drop/scroll-behaviour";
+import "mobile-drag-drop/default.css";
+
+polyfill({
+  dragImageTranslateOverride: scrollBehaviourDragImageTranslateOverride,
+  holdToDrag: 1
+});
+
+window.addEventListener('touchmove', function() {}, {passive: false});
 
 // ==========================================================
 // 1. DATA DUMMY
@@ -109,6 +119,7 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
   const [frameSlots, setFrameSlots] = useState(Array(slotCount).fill(null)); 
   const [activeSlot, setActiveSlot] = useState(0);
   const [slotSettings, setSlotSettings] = useState(Array(slotCount).fill({ x: 50, y: 50, zoom: 1 }));
+  const [draggedPhoto, setDraggedPhoto] = useState(null);
 
   const handleDrop = (e, slotIndex) => {
     e.preventDefault();
@@ -144,17 +155,34 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        <div className="w-full lg:w-1/4 h-[20vh] lg:h-full bg-[#1A1010] border-b lg:border-r border-white/10 overflow-y-auto p-4 shrink-0 custom-scrollbar">
-          <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4 text-center lg:text-left">Pilih Foto</h3>
-          <div className="flex flex-row lg:flex-col gap-3">
+        {/* KOLOM KIRI: Daftar Foto Asli */}
+        <div className="w-full lg:w-1/4 h-[25vh] lg:h-full bg-[#1A1010] border-b lg:border-b-0 lg:border-r border-white/10 overflow-x-auto lg:overflow-x-hidden lg:overflow-y-auto p-4 shrink-0 custom-scrollbar"
+             style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          <h3 className="text-white/50 text-[10px] lg:text-xs font-bold uppercase tracking-wider mb-4 text-center lg:text-left sticky top-0 bg-[#1A1010] z-10 pb-2">
+            Pilih Foto
+          </h3>
+          
+          {/* PEMBUNGKUS FOTO: Di Tablet (LG) dia flex-col (atas-bawah) */}
+          <div className="flex flex-row lg:flex-col gap-4 pb-10">
             {photos.filter(p => p !== null).map((photo, i) => (
               <img 
                 key={i} src={photo} alt={`Foto ${i+1}`} draggable="true"
-                onDragStart={(e) => e.dataTransfer.setData('photoUrl', photo)}
+                onDragStart={(e) => {
+                  setDraggedPhoto(photo); 
+                  e.dataTransfer.setData('text/plain', 'dummy'); 
+                }}
+                onDragEnd={() => setDraggedPhoto(null)} 
                 onClick={() => {
                   setFrameSlots(prev => { const n = [...prev]; n[activeSlot] = photo; return n; });
                 }} 
-                className="w-24 lg:w-full aspect-[4/3] object-cover rounded-lg cursor-grab hover:ring-2 hover:ring-green-500 bg-black transition-all"
+                className="w-28 lg:w-full aspect-[4/3] shrink-0 object-cover rounded-lg cursor-grab hover:ring-2 hover:ring-green-500 bg-black transition-all shadow-lg"
+                onContextMenu={(e) => e.preventDefault()} 
+                style={{ 
+                  touchAction: 'manipulation', 
+                  WebkitTouchCallout: 'none', 
+                  userSelect: 'none' 
+                }}
               />
             ))}
           </div>
@@ -167,7 +195,18 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
                 const setting = slotSettings[index];
                 return (
                   <div 
-                    key={index} onDrop={(e) => handleDrop(e, index)} onDragOver={(e) => e.preventDefault()} onClick={() => setActiveSlot(index)}
+                    key={index}
+                    onDragEnter={(e) => e.preventDefault()} 
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (draggedPhoto) {
+                        setFrameSlots(prev => { const n = [...prev]; n[index] = draggedPhoto; return n; });
+                        setActiveSlot(index);
+                        setDraggedPhoto(null); 
+                      }
+                    }}
+                    onClick={() => setActiveSlot(index)}
                     style={{ position: 'absolute', top: slotConfig.top, left: slotConfig.left, width: slotConfig.width, height: slotConfig.height }}
                     className={`bg-black flex items-center justify-center overflow-hidden cursor-pointer transition-all ${activeSlot === index ? 'ring-2 ring-green-500 z-20 scale-105' : 'ring-1 ring-white/20'}`}
                   >
@@ -288,7 +327,7 @@ function FilterFinalView({ arrangedData, selectedFrame, onBack, onNext }) {
 
 
 // ==========================================================
-// 5. TAHAP 5: HALAMAN PEMBAYARAN (MIDTRANS UI)
+// 5. TAHAP 5: HALAMAN PEMBAYARAN (MIDTRANS UI) 
 // ==========================================================
 function PaymentView({ finalData, onBack, onSuccess }) {
   // Simulasi status pembayaran
