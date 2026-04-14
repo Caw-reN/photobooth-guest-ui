@@ -302,20 +302,47 @@ function FilterFinalView({ arrangedData, selectedFrame, onBack, onNext }) {
           </div>
         </div>
 
-        <div className="w-full lg:w-1/3 h-[40vh] lg:h-full bg-gray-900/40 overflow-y-auto p-6 shrink-0 custom-scrollbar flex flex-col gap-6">
-          <div className="flex justify-between items-end border-b border-white/10 pb-4">
-             <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider">Pilih Filter</h3>
-             <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">Edit Slot {activeSlot + 1}</span>
+        {/* PANEL KANAN: Daftar Filter */}
+        <div className="w-full lg:w-1/3 h-[40vh] lg:h-full bg-gray-900/40 overflow-y-auto p-4 lg:p-6 shrink-0 custom-scrollbar flex flex-col gap-4">
+          <div className="flex justify-between items-end border-b border-white/10 pb-3">
+             <h3 className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Pilih Filter</h3>
+             <span className="text-[8px] bg-green-500/20 text-green-400 px-2 py-0.5 rounded uppercase">Slot {activeSlot + 1}</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 lg:gap-4">
+
+          {/* ---> KUNCI: grid-cols-4 untuk 4 kolom ke samping <--- */}
+          <div className="grid grid-cols-4 gap-2 lg:gap-2.5">
             {FILTERS.map((filter) => (
-              <button key={filter.id} onClick={() => { const n = [...slotFilters]; n[activeSlot] = filter.css; setSlotFilters(n); }} className={`flex flex-col items-center p-2 rounded-xl border-2 ${slotFilters[activeSlot] === filter.css ? 'border-green-500 bg-white/10' : 'border-white/10 hover:bg-white/5'}`}>
-                 <div className="w-full aspect-square bg-gray-500 rounded-lg mb-3 overflow-hidden">
+              <button 
+                key={filter.id} 
+                onClick={() => { const n = [...slotFilters]; n[activeSlot] = filter.css; setSlotFilters(n); }} 
+                className={`flex flex-col items-center p-1.5 rounded-lg border transition-all ${
+                  slotFilters[activeSlot] === filter.css 
+                  ? 'border-green-500 bg-white/10 scale-95' 
+                  : 'border-white/5 hover:bg-white/5'
+                }`}
+              >
+                 {/* Preview Gambar Filter (Dikecilkan) */}
+                 <div className="w-full aspect-square bg-gray-800 rounded-md mb-1.5 overflow-hidden border border-white/5">
                     {arrangedData.slots[activeSlot] ? (
-                      <img src={arrangedData.slots[activeSlot]} style={{ filter: filter.css, objectFit: 'cover', objectPosition: `${arrangedData.settings[activeSlot].x}% ${arrangedData.settings[activeSlot].y}%`, transform: `scale(${arrangedData.settings[activeSlot].zoom})`}} className="w-full h-full" />
-                    ) : ( <div className="w-full h-full bg-gray-600" style={{ filter: filter.css }}></div> )}
+                      <img 
+                        src={arrangedData.slots[activeSlot]} 
+                        style={{ 
+                          filter: filter.css, 
+                          objectFit: 'cover', 
+                          objectPosition: `${arrangedData.settings[activeSlot].x}% ${arrangedData.settings[activeSlot].y}%`, 
+                          transform: `scale(${arrangedData.settings[activeSlot].zoom})`
+                        }} 
+                        className="w-full h-full" 
+                      />
+                    ) : ( 
+                      <div className="w-full h-full bg-gray-700" style={{ filter: filter.css }}></div> 
+                    )}
                  </div>
-                 <span className="text-[10px] lg:text-xs font-medium">{filter.name}</span>
+                 
+                 {/* Nama Filter (Dikecilkan ukurannya) */}
+                 <span className="text-[8px] lg:text-[9px] font-bold tracking-tight text-white/70 truncate w-full text-center">
+                    {filter.name}
+                 </span> 
               </button>
             ))}
           </div>
