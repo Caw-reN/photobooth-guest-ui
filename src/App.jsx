@@ -5,6 +5,9 @@ import {
   RefreshCw, ChevronRight, Settings2, Play, ChevronDown, ChevronUp, Video
 } from 'lucide-react';
 
+
+import { guestApi, STORAGE_URL } from './services/guestApi';
+
 // ==========================================================
 // 1. DATA DUMMY
 // ==========================================================
@@ -44,8 +47,65 @@ const FILTERS = [
 // 2. TAHAP 2: PILIH FRAME TEMPLATE
 // ==========================================================
 function FrameSelectionView({ onBack, onNext }) {
-  const [activeFrame, setActiveFrame] = useState(FRAME_TEMPLATES[0]);
+  // 1. Ganti state ke data dinamis dari API
+  const [framesData, setFramesData] = useState([]);
+  const [activeFrame, setActiveFrame] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // 2. Fungsi untuk mengambil data dari backend Laravel saat halaman dibuka
+  useEffect(() => {
+    const fetchFrames = async () => {
+      try {
+        const responseData = await guestApi.getActiveFrames();
+        
+        const formattedFrames = responseData.data
+          .filter(item => item.is_active === 1 || item.is_active === true)
+          .map(item => {
+            let coords = [];
+            if (typeof item.coordinates === 'string') {
+              try { coords = JSON.parse(item.coordinates); } catch (e) {}
+            } else if (Array.isArray(item.coordinates)) {
+              coords = item.coordinates;
+            }
+
+            return {
+              id: item.id,
+              name: item.name,
+              // KODE AJAIB PENGHILANG 'public/':
+              src: STORAGE_URL + item.image_path.replace('public/', ''), 
+              slots: coords.map(c => ({
+                top: `${c.y}%`,
+                left: `${c.x}%`,
+                width: `${c.width}%`,
+                height: `${c.height}%`
+              }))
+            };
+          });
+
+        setFramesData(formattedFrames);
+        if (formattedFrames.length > 0) {
+          setActiveFrame(formattedFrames[0]);
+        }
+      } catch (error) {
+        console.error("Gagal mengambil data frame:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFrames();
+  }, []);
+
+  // 3. Tampilan saat loading atau data kosong
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center bg-[#0A0A0A] text-white">Memuat daftar frame...</div>;
+  }
+
+  if (framesData.length === 0) {
+    return <div className="flex h-screen items-center justify-center bg-[#0A0A0A] text-white">Belum ada frame yang aktif.</div>;
+  }
+
+  // 4. UI Utama
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
       <div className="h-14 lg:h-16 flex-none border-b border-white/10 bg-white/5 flex items-center px-4 justify-between z-50">
@@ -60,10 +120,11 @@ function FrameSelectionView({ onBack, onNext }) {
         <div className="w-full lg:w-1/3 h-[30vh] lg:h-full border-b lg:border-b-0 lg:border-r border-white/10 bg-[#111] overflow-y-auto p-4 lg:p-6 shrink-0 custom-scrollbar">
           <h3 className="text-white/50 text-[10px] lg:text-xs font-bold uppercase tracking-wider mb-4 text-center lg:text-left">Pilih Template</h3>
           <div className="grid grid-cols-3 lg:grid-cols-2 gap-3 lg:gap-5">
-            {FRAME_TEMPLATES.map((frame) => (
+            {/* Ubah map dari FRAME_TEMPLATES menjadi framesData */}
+            {framesData.map((frame) => (
               <button 
                 key={frame.id} onClick={() => setActiveFrame(frame)}
-                className={`relative rounded-xl transition-all duration-300 flex flex-col items-center justify-center p-1.5 ${activeFrame.id === frame.id ? 'ring-2 ring-green-500 bg-white/5 scale-[0.97]' : 'hover:scale-105 hover:bg-white/5 opacity-70 hover:opacity-100'}`}
+                className={`relative rounded-xl transition-all duration-300 flex flex-col items-center justify-center p-1.5 ${activeFrame?.id === frame.id ? 'ring-2 ring-green-500 bg-white/5 scale-[0.97]' : 'hover:scale-105 hover:bg-white/5 opacity-70 hover:opacity-100'}`}
               >
                 <img src={frame.src} alt={frame.name} className="w-full h-auto object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)]" />
               </button>
@@ -71,29 +132,31 @@ function FrameSelectionView({ onBack, onNext }) {
           </div>
         </div>
 
-        <div className="w-full lg:w-2/3 flex-1 lg:h-full bg-black flex flex-col items-center justify-center p-6 relative">
-          <div className="relative w-full max-w-[280px] lg:max-w-sm aspect-[3/4] bg-[#1A1A1A] rounded-xl shadow-2xl overflow-hidden flex items-center justify-center border border-white/10">
-             <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 z-0 bg-gradient-to-br from-[#222] to-[#111]">
-               <ImageIcon size={48} className="mb-4 opacity-50" />
-               <p className="text-xs font-medium uppercase tracking-widest opacity-50">Area Foto Transparan</p>
-             </div>
-             <img src={activeFrame.src} className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" alt="Frame" />
-          </div>
-          <div className="absolute bottom-6 w-full max-w-md px-6 z-20">
-            <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
-              <div>
-                <p className="text-[10px] lg:text-xs text-white/50 uppercase tracking-wider mb-1">Frame Terpilih</p>
-                <h3 className="font-bold text-base lg:text-lg text-white">{activeFrame.name}</h3>
+        {activeFrame && (
+          <div className="w-full lg:w-2/3 flex-1 lg:h-full bg-black flex flex-col items-center justify-center p-6 relative">
+            <div className="relative w-full max-w-[280px] lg:max-w-sm aspect-[3/4] bg-[#1A1A1A] rounded-xl shadow-2xl overflow-hidden flex items-center justify-center border border-white/10">
+               <div className="absolute inset-0 flex flex-col items-center justify-center text-white/20 z-0 bg-gradient-to-br from-[#222] to-[#111]">
+                 <ImageIcon size={48} className="mb-4 opacity-50" />
+                 <p className="text-xs font-medium uppercase tracking-widest opacity-50">Area Foto Transparan</p>
+               </div>
+               <img src={activeFrame.src} className="absolute inset-0 w-full h-full object-cover z-10 pointer-events-none drop-shadow-[0_0_20px_rgba(0,0,0,0.5)]" alt="Frame" />
+            </div>
+            <div className="absolute bottom-6 w-full max-w-md px-6 z-20">
+              <div className="bg-[#1A1A1A] border border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-[0_10px_40px_rgba(0,0,0,0.8)]">
+                <div>
+                  <p className="text-[10px] lg:text-xs text-white/50 uppercase tracking-wider mb-1">Frame Terpilih</p>
+                  <h3 className="font-bold text-base lg:text-lg text-white">{activeFrame.name}</h3>
+                </div>
+                <button 
+                  onClick={() => onNext(activeFrame)}
+                  className="px-4 py-2.5 lg:px-6 lg:py-3 bg-green-500 text-black text-sm lg:text-base font-bold rounded-xl hover:bg-green-400 flex items-center gap-2"
+                >
+                  Lanjutkan <ChevronRight size={16} />
+                </button>
               </div>
-              <button 
-                onClick={() => onNext(activeFrame)}
-                className="px-4 py-2.5 lg:px-6 lg:py-3 bg-green-500 text-black text-sm lg:text-base font-bold rounded-xl hover:bg-green-400 flex items-center gap-2"
-              >
-                Lanjutkan <ChevronRight size={16} />
-              </button>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
@@ -104,11 +167,14 @@ function FrameSelectionView({ onBack, onNext }) {
 // 3. TAHAP 3: DRAG & DROP, GESER, ZOOM FOTO
 // ==========================================================
 function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
-  // Antisipasi error kalau selectedFrame kosong
   const slotCount = selectedFrame?.slots?.length || 1; 
+  
+  // Perbaikan state: Menggunakan fungsi agar tiap slot punya objek setting yang berbeda (tidak berbagi referensi)
   const [frameSlots, setFrameSlots] = useState(Array(slotCount).fill(null)); 
   const [activeSlot, setActiveSlot] = useState(0);
-  const [slotSettings, setSlotSettings] = useState(Array(slotCount).fill({ x: 50, y: 50, zoom: 1 }));
+  const [slotSettings, setSlotSettings] = useState(() => 
+    Array.from({ length: slotCount }, () => ({ x: 50, y: 50, zoom: 1 }))
+  );
 
   const handleDrop = (e, slotIndex) => {
     e.preventDefault();
@@ -135,6 +201,7 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
 
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
+      {/* HEADER */}
       <div className="h-14 lg:h-16 flex-none border-b border-white/10 bg-white/5 flex items-center px-4 justify-between z-50">
         <button onClick={onBack} className="text-xs lg:text-sm text-white/50 hover:text-white">&larr; Kembali</button>
         <h2 className="text-xs lg:text-sm font-bold tracking-widest text-white/50 uppercase">
@@ -144,6 +211,7 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        {/* KOLOM KIRI: STOK FOTO */}
         <div className="w-full lg:w-1/4 h-[20vh] lg:h-full bg-[#1A1010] border-b lg:border-r border-white/10 overflow-y-auto p-4 shrink-0 custom-scrollbar">
           <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider mb-4 text-center lg:text-left">Pilih Foto</h3>
           <div className="flex flex-row lg:flex-col gap-3">
@@ -154,64 +222,115 @@ function ArrangePhotoView({ photos, selectedFrame, onBack, onNext }) {
                 onClick={() => {
                   setFrameSlots(prev => { const n = [...prev]; n[activeSlot] = photo; return n; });
                 }} 
-                className="w-24 lg:w-full aspect-[4/3] object-cover rounded-lg cursor-grab hover:ring-2 hover:ring-green-500 bg-black transition-all"
+                className={`w-24 lg:w-full aspect-[4/3] object-cover rounded-lg cursor-grab hover:ring-2 hover:ring-green-500 bg-black transition-all ${frameSlots.includes(photo) ? 'opacity-30' : ''}`}
               />
             ))}
           </div>
         </div>
 
-        <div className="w-full lg:w-2/4 flex-1 lg:h-full bg-[#111] flex flex-col items-center p-6 relative overflow-y-auto">
-          <div className="relative w-full max-w-[280px] lg:max-w-[350px] bg-white/5 shadow-2xl flex items-center justify-center p-0 overflow-hidden rounded-md">
-            <div className="absolute inset-0 z-0">
-              {selectedFrame.slots.map((slotConfig, index) => {
-                const setting = slotSettings[index];
-                return (
-                  <div 
-                    key={index} onDrop={(e) => handleDrop(e, index)} onDragOver={(e) => e.preventDefault()} onClick={() => setActiveSlot(index)}
-                    style={{ position: 'absolute', top: slotConfig.top, left: slotConfig.left, width: slotConfig.width, height: slotConfig.height }}
-                    className={`bg-black flex items-center justify-center overflow-hidden cursor-pointer transition-all ${activeSlot === index ? 'ring-2 ring-green-500 z-20 scale-105' : 'ring-1 ring-white/20'}`}
-                  >
-                    {frameSlots[index] ? (
-                      <img src={frameSlots[index]} className="w-full h-full" style={{ objectFit: 'cover', objectPosition: `${setting.x}% ${setting.y}%`, transform: `scale(${setting.zoom})`}} alt="Slot" />
-                    ) : (
-                      <span className="text-white/30 text-[10px] text-center px-1">Tarik Foto {index + 1}</span>
-                    )}
-                  </div>
-                )
-              })}
+        {/* KOLOM TENGAH: KANVAS UTAMA */}
+        <div className="flex-1 bg-[#111] flex flex-col items-center justify-center p-6 relative overflow-hidden">
+          
+          <div className="relative inline-block shadow-2xl rounded-xl overflow-hidden mx-auto bg-black" 
+               style={{ fontSize: 0, width: 'fit-content', maxHeight: '70vh' }}>
+            
+            {/* LAYER 1: SLOT FOTO (DI BELAKANG) */}
+            <div className="absolute inset-0 w-full h-full z-10">
+              {selectedFrame.slots.map((slot, index) => (
+                <div
+                  key={index}
+                  onDrop={(e) => handleDrop(e, index)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onClick={() => setActiveSlot(index)}
+                  className={`absolute bg-[#1a1a1a] overflow-hidden cursor-pointer group transition-all ${
+                    activeSlot === index ? 'ring-2 ring-green-500 z-30' : 'z-10'
+                  }`}
+                  style={{
+                    top: slot.top,
+                    left: slot.left,
+                    width: slot.width,
+                    height: slot.height,
+                  }}
+                >
+                  {frameSlots[index] ? (
+                    <img
+                      src={frameSlots[index]}
+                      className="w-full h-full object-cover pointer-events-none"
+                      style={{
+                        transform: `scale(${slotSettings[index].zoom})`,
+                        objectPosition: `${slotSettings[index].x}% ${slotSettings[index].y}%`
+                      }}
+                      alt="Placed"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center border border-white/5">
+                      <span className="text-[10px] text-white/20 font-bold uppercase">Slot {index + 1}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
-            <img src={selectedFrame.src} className="relative w-full h-auto z-10 pointer-events-none drop-shadow-xl block" alt="Frame Overlay" />
+
+            {/* LAYER 2: GAMBAR FRAME (DI DEPAN) */}
+            <img 
+              src={selectedFrame.src} 
+              className="relative z-20 pointer-events-none block w-auto" 
+              style={{ maxHeight: '70vh', maxWidth: '100%' }}
+              alt="Frame" 
+            />
           </div>
 
-          <div className="mt-8 w-full max-w-[280px] lg:max-w-[350px]">
-            <button onClick={() => onNext(frameSlots, slotSettings)} className="w-full py-3 bg-white/10 text-white font-bold rounded-lg hover:bg-green-500 hover:text-black transition-all flex items-center justify-center gap-2">
-              Lanjut Pilih Filter <ChevronRight size={16} />
+          <div className="mt-8 w-full max-w-[280px]">
+            <button 
+              onClick={() => onNext(frameSlots, slotSettings)} // FIX: Kirim data asli, jangan angka 4
+              className="w-full py-3 bg-green-500 text-black font-bold rounded-lg hover:bg-green-400 transition-all flex items-center justify-center gap-2"
+            >
+              Lanjutkan Ke Filter <ChevronRight size={16} />
             </button>
           </div>
         </div>
 
-        <div className="w-full lg:w-1/4 h-[30vh] lg:h-full bg-[#151A20] overflow-y-auto p-6 shrink-0 custom-scrollbar flex flex-col gap-6">
+        {/* KOLOM KANAN: SLIDER KONTROL */}
+        <div className="w-full lg:w-1/4 h-[30vh] lg:h-full bg-[#151A20] overflow-y-auto p-6 shrink-0 border-l border-white/10 flex flex-col gap-6">
           <div className="flex justify-between items-end border-b border-white/10 pb-4">
              <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider">Sesuaikan Posisi</h3>
-             <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">Edit Slot {activeSlot + 1}</span>
+             <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">Slot {activeSlot + 1}</span>
           </div>
+          
           {frameSlots[activeSlot] ? (
             <div className="flex flex-col gap-6">
+              {/* SLIDER X */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-white/70 flex justify-between"><span>Kiri / Kanan</span> <span>{slotSettings[activeSlot].x}%</span></label>
+                <div className="flex justify-between text-xs text-white/70">
+                  <label>Kiri / Kanan</label>
+                  <span>{slotSettings[activeSlot].x}%</span>
+                </div>
                 <input type="range" min="0" max="100" value={slotSettings[activeSlot].x} onChange={(e) => updateSetting('x', Number(e.target.value))} className="w-full accent-green-500" />
               </div>
+
+              {/* SLIDER Y */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-white/70 flex justify-between"><span>Atas / Bawah</span> <span>{slotSettings[activeSlot].y}%</span></label>
+                <div className="flex justify-between text-xs text-white/70">
+                  <label>Atas / Bawah</label>
+                  <span>{slotSettings[activeSlot].y}%</span>
+                </div>
                 <input type="range" min="0" max="100" value={slotSettings[activeSlot].y} onChange={(e) => updateSetting('y', Number(e.target.value))} className="w-full accent-green-500" />
               </div>
+
+              {/* SLIDER ZOOM */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs text-white/70 flex justify-between"><span>Zoom</span> <span>{slotSettings[activeSlot].zoom.toFixed(1)}x</span></label>
+                <div className="flex justify-between text-xs text-white/70">
+                  <label>Zoom</label>
+                  <span>{slotSettings[activeSlot].zoom.toFixed(1)}x</span>
+                </div>
                 <input type="range" min="1" max="3" step="0.1" value={slotSettings[activeSlot].zoom} onChange={(e) => updateSetting('zoom', Number(e.target.value))} className="w-full accent-green-500" />
               </div>
             </div>
           ) : (
-             <div className="flex-1 flex flex-col items-center justify-center text-white/20"><ImageIcon size={32} className="mb-2 opacity-50" /><p className="text-xs text-center">Isi foto dulu</p></div>
+             <div className="flex-1 flex flex-col items-center justify-center text-white/20">
+               <ImageIcon size={32} className="mb-2 opacity-50" />
+               <p className="text-xs text-center">Isi foto dulu</p>
+             </div>
           )}
         </div>
       </div>
@@ -232,6 +351,7 @@ function FilterFinalView({ arrangedData, selectedFrame, onBack, onNext }) {
 
   return (
     <div className="flex flex-col h-screen bg-[#0A0A0A] text-white font-sans overflow-hidden">
+      {/* HEADER */}
       <div className="h-14 lg:h-16 flex-none border-b border-white/10 bg-white/5 flex items-center px-4 justify-between z-50">
         <button onClick={onBack} className="text-xs lg:text-sm text-white/50 hover:text-white">&larr; Kembali</button>
         <h2 className="text-xs lg:text-sm font-bold tracking-widest text-white/50 uppercase">Atur Posisi &rarr; <span className="text-white">Filter</span></h2>
@@ -239,48 +359,114 @@ function FilterFinalView({ arrangedData, selectedFrame, onBack, onNext }) {
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        <div className="w-full lg:w-2/3 flex-1 lg:h-full bg-[#111] flex flex-col items-center p-6 relative overflow-y-auto border-r border-white/10">
-          <div className="relative w-full max-w-[280px] lg:max-w-[400px] bg-white/5 shadow-2xl flex items-center justify-center p-0 overflow-hidden rounded-md">
-            <div className="absolute inset-0 z-0">
+        {/* KOLOM KIRI: KANVAS FINAL (AUTO-SCALE) */}
+        <div className="w-full lg:w-2/3 flex-1 lg:h-full bg-[#111] flex flex-col items-center justify-center p-4 lg:p-6 relative overflow-hidden border-r border-white/10">
+          
+          {/* PEMBUNGKUS UTAMA: Mengunci ukuran agar tidak meluber dari layar (max-h-70vh) */}
+          <div className="relative inline-block shadow-2xl rounded-xl overflow-hidden mx-auto bg-black" 
+               style={{ 
+                 fontSize: 0, 
+                 width: 'fit-content', 
+                 maxHeight: '70vh' // Membatasi tinggi agar fit di layar
+               }}>
+            
+            {/* LAYER 1: SLOT FOTO (DI BELAKANG) */}
+            <div className="absolute inset-0 w-full h-full z-10">
               {selectedFrame.slots.map((slotConfig, index) => {
                 const setting = arrangedData.settings[index]; 
                 const photoUrl = arrangedData.slots[index];
                 return (
-                  <div key={index} onClick={() => setActiveSlot(index)} style={{ position: 'absolute', top: slotConfig.top, left: slotConfig.left, width: slotConfig.width, height: slotConfig.height }} className={`bg-black overflow-hidden cursor-pointer ${activeSlot === index ? 'ring-2 ring-green-500 z-20' : ''}`}>
+                  <div 
+                    key={index} 
+                    onClick={() => setActiveSlot(index)} 
+                    style={{ 
+                      position: 'absolute', 
+                      top: slotConfig.top, 
+                      left: slotConfig.left, 
+                      width: slotConfig.width, 
+                      height: slotConfig.height 
+                    }} 
+                    className={`bg-black overflow-hidden cursor-pointer transition-all ${activeSlot === index ? 'ring-2 ring-green-500 z-30 scale-[1.01]' : 'z-10'}`}
+                  >
                     {photoUrl && (
-                      <img src={photoUrl} className="w-full h-full" style={{ objectFit: 'cover', objectPosition: `${setting.x}% ${setting.y}%`, transform: `scale(${setting.zoom})`, filter: slotFilters[index] }} alt="Slot" />
+                      <img 
+                        src={photoUrl} 
+                        className="w-full h-full block pointer-events-none" 
+                        style={{ 
+                          objectFit: 'cover', 
+                          objectPosition: `${setting.x}% ${setting.y}%`, 
+                          transform: `scale(${setting.zoom})`, 
+                          filter: slotFilters[index] 
+                        }} 
+                        alt="Slot" 
+                      />
                     )}
                   </div>
-                )
+                );
               })}
             </div>
-            <img src={selectedFrame.src} className="relative w-full h-auto z-10 pointer-events-none drop-shadow-xl" alt="Frame" />
+            
+            {/* LAYER 2: GAMBAR FRAME (DI DEPAN) */}
+            <img 
+              src={selectedFrame.src} 
+              className="relative z-20 pointer-events-none block w-auto h-auto" 
+              style={{ 
+                maxHeight: '70vh', // Frame mengecil jika layar pendek
+                maxWidth: '100%'    // Frame mengecil jika layar sempit
+              }}
+              alt="Frame" 
+            />
           </div>
-          <div className="mt-8 w-full max-w-[280px] lg:max-w-[400px]">
-            <button onClick={() => onNext({ ...arrangedData, filters: slotFilters })} className="w-full py-3 bg-green-500 text-black font-bold rounded-lg hover:bg-green-400 flex justify-center gap-2">
+
+          <div className="mt-6 w-full max-w-[280px]">
+            <button onClick={() => onNext({ ...arrangedData, filters: slotFilters })} className="w-full py-3 bg-green-500 text-black font-bold rounded-lg hover:bg-green-400 flex justify-center gap-2 shadow-lg active:scale-95">
               Selesai & Cetak <ChevronRight size={16} />
             </button>
           </div>
         </div>
 
-        <div className="w-full lg:w-1/3 h-[40vh] lg:h-full bg-gray-900/40 overflow-y-auto p-6 shrink-0 custom-scrollbar flex flex-col gap-6">
-          <div className="flex justify-between items-end border-b border-white/10 pb-4">
-             <h3 className="text-white/50 text-xs font-bold uppercase tracking-wider">Pilih Filter</h3>
-             <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">Edit Slot {activeSlot + 1}</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 lg:gap-4">
-            {FILTERS.map((filter) => (
-              <button key={filter.id} onClick={() => { const n = [...slotFilters]; n[activeSlot] = filter.css; setSlotFilters(n); }} className={`flex flex-col items-center p-2 rounded-xl border-2 ${slotFilters[activeSlot] === filter.css ? 'border-green-500 bg-white/10' : 'border-white/10 hover:bg-white/5'}`}>
-                 <div className="w-full aspect-square bg-gray-500 rounded-lg mb-3 overflow-hidden">
-                    {arrangedData.slots[activeSlot] ? (
-                      <img src={arrangedData.slots[activeSlot]} style={{ filter: filter.css, objectFit: 'cover', objectPosition: `${arrangedData.settings[activeSlot].x}% ${arrangedData.settings[activeSlot].y}%`, transform: `scale(${arrangedData.settings[activeSlot].zoom})`}} className="w-full h-full" />
-                    ) : ( <div className="w-full h-full bg-gray-600" style={{ filter: filter.css }}></div> )}
-                 </div>
-                 <span className="text-[10px] lg:text-xs font-medium">{filter.name}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* KOLOM KANAN: PILIHAN FILTER */}
+        {/* --- KOLOM KANAN: PILIHAN FILTER (GANTI KE 4 KOLOM) --- */}
+<div className="w-full lg:w-1/3 h-[40vh] lg:h-full bg-gray-900/40 overflow-y-auto p-4 lg:p-6 shrink-0 custom-scrollbar flex flex-col gap-6">
+  <div className="flex justify-between items-end border-b border-white/10 pb-4">
+     <h3 className="text-white/50 text-[10px] font-bold uppercase tracking-wider">Katalog Filter</h3>
+     <span className="text-[10px] bg-green-500/20 text-green-400 px-2 py-1 rounded">Slot {activeSlot + 1}</span>
+  </div>
+
+  {/* GANTI grid-cols-2 MENJADI grid-cols-4 DI BAWAH INI */}
+  <div className="grid grid-cols-4 gap-2 lg:gap-3">
+    {FILTERS.map((filter) => (
+      <button 
+        key={filter.id} 
+        onClick={() => { 
+          const newFilters = [...slotFilters]; 
+          newFilters[activeSlot] = filter.css; 
+          setSlotFilters(newFilters); 
+        }} 
+        className={`flex flex-col items-center p-1.5 rounded-lg border-2 transition-all ${slotFilters[activeSlot] === filter.css ? 'border-green-500 bg-green-500/10' : 'border-white/5 hover:bg-white/5'}`}
+      >
+         <div className="w-full aspect-square bg-gray-800 rounded-md mb-1.5 overflow-hidden">
+            {arrangedData.slots[activeSlot] ? (
+              <img 
+                src={arrangedData.slots[activeSlot]} 
+                style={{ 
+                  filter: filter.css, 
+                  objectFit: 'cover',
+                  objectPosition: `${arrangedData.settings[activeSlot].x}% ${arrangedData.settings[activeSlot].y}%`, 
+                  transform: `scale(${arrangedData.settings[activeSlot].zoom})`
+                }} 
+                className="w-full h-full" 
+                alt={filter.name}
+              />
+            ) : ( 
+              <div className="w-full h-full bg-gray-700"></div> 
+            )}
+         </div>
+         <span className="text-[8px] lg:text-[10px] font-medium tracking-tight uppercase truncate w-full text-center">{filter.name}</span>
+      </button>
+    ))}
+  </div>
+</div>
       </div>
     </div>
   );
